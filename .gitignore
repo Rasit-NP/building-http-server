@@ -1,0 +1,11 @@
+# 빌드 산출물
+build/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
