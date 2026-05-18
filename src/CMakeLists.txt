@@ -1,4 +1,8 @@
+add_library(calculator STATIC calculator.cpp)
+target_include_directories(calculator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(http_server main.cpp)
+target_link_libraries(http_server PRIVATE calculator)
 
 target_include_directories(http_server
     PRIVATE ${CMAKE_SOURCE_DIR}/include

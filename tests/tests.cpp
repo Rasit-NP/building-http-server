@@ -1,9 +1,14 @@
-# include <cassert>
-# include <iostream>
-using namespace std;
+# include <gtest/gtest.h>
+# include "../src/calculator.h"
 
-int main(){
-    assert(1 + 1 == 2);
-    cout << "test passed" << endl;
-    return 0;
+TEST(CalculatorTest, AddPositiveNumbers)
+{
+    EXPECT_EQ(add(2, 3), 5);
+    EXPECT_EQ(add(3, 4), 6);
+}
+
+TEST(CalculatorTest, AddNegativeNumbers)
+{
+    EXPECT_EQ(add(-2, -1), 5);
+    EXPECT_EQ(add(-3, 4), 6);
 }
