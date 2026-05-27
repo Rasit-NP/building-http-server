@@ -1,12 +1,24 @@
-FROM ubuntu:22.04
+# Stage 1: Build
+FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y build-essential cmake git
 RUN rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY . .
+WORKDIR /src
+COPY CMakeLists.txt ./
+COPY src/ ./src/
+COPY tests/ ./tests/
 
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build build -j
 
-CMD ["./build/src/http_server"]
+# Stage 2: Runtime
+FROM ubuntu:22.04 AS runtime
+
+RUN apt-get update && apt-get install -y libstdc++6
+RUN rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /src/build/src/http_server ./
+
+CMD ["./http_server"]
