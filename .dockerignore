@@ -1,1 +1,8 @@
 build/
+cmake-build-*/
+.git/
+.vscode/
+.idea/
+*.user
+CMakeCache.txt
+CMakeFiles/
