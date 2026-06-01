@@ -1,6 +1,6 @@
+#include <cerrno>
 # include <sys/socket.h>
 # include <netinet/in.h>
-# include <arpa/inet.h>
 # include <unistd.h>
 # include <cstring>
 # include <cstdio>
@@ -35,18 +35,37 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-    int conn_fd = accept(listen_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
-    if (conn_fd < 0) {
-        perror("accept");
-        exit(EXIT_FAILURE);
+    while (true) {
+        sockaddr_in client_addr{};
+        socklen_t client_len = sizeof(client_addr);
+        int client_fd = accept(listen_fd, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
+        if (client_fd < 0) {
+            perror("accept");
+            continue;
+        }
+
+        char buf[1024];
+        while (true) {
+            ssize_t n = read(client_fd, buf, sizeof(buf));
+            if (n == 0) {
+                break;
+            }
+            if (n < 0) {
+                if (errno == EINTR)
+                    continue;
+                perror("read");
+                break;
+            }
+
+            ssize_t written = write(client_fd, buf, n);
+            if (written< 0) {
+                perror("write");
+                break;
+            }
+        }
+        close(client_fd);
     }
 
-    const char* msg = "Hello from server\n";
-    write(conn_fd, msg, strlen(msg));
-
-    close(conn_fd);
     close(listen_fd);
     return 0;
 }
