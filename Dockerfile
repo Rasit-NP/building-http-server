@@ -19,6 +19,7 @@ WORKDIR /src
 COPY CMakeLists.txt ./
 COPY src/ ./src/
 COPY tests/ ./tests/
+COPY include/ ./include/
 
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build build -j
