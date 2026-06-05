@@ -5,6 +5,7 @@
 # include <sys/socket.h>
 # include <unistd.h>
 # include <cstdio>
+# include <cerrno>
 # include <stdexcept>
 
 Socket::Socket() {
@@ -55,13 +56,16 @@ void Socket::listen(int backlog) {
         throw std::runtime_error("listen() failed");
 }
 
-Socket Socket::accept() {
+std::optional<Socket> Socket::accept() {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
     int client_fd = ::accept(fd_, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
 
-    if (client_fd < 0)
+    if (client_fd < 0){
+        if (errno == EINTR)
+            return std::nullopt;
         throw std::runtime_error("accept() failed");
+    }
 
     return Socket(client_fd);
 }

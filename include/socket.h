@@ -1,6 +1,7 @@
 #ifndef HTTP_SERVER_SOCKET_H
 #define HTTP_SERVER_SOCKET_H
 
+# include <optional>
 # include <cstdint>
 # include <sys/types.h>
 
@@ -18,7 +19,7 @@ public:
 
     void bind(uint16_t port);
     void listen(int backlog = 10);
-    Socket accept();
+    std::optional<Socket> accept();
     ssize_t read(char* buf, size_t len);
     bool write(const char* buf, size_t len);
 
