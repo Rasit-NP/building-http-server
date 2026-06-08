@@ -1,3 +1,4 @@
+# include <atomic>
 # include <cerrno>
 # include <sys/socket.h>
 # include <csignal>
@@ -5,11 +6,29 @@
 # include <cstdio>
 # include <socket.h>
 # include <stdexcept>
+#include <unistd.h>
 
-volatile sig_atomic_t g_should_stop = 0;
+std::atomic<bool> g_should_stop{false};
+static_assert(std::atomic<bool>::is_always_lock_free);
 
 void handle_signal(int) {
     g_should_stop = 1;
+}
+
+void handle_client(Socket& client) {
+    char buf[1024];
+    while (true) {
+        ssize_t n = client.read(buf, sizeof(buf));
+        if (n > 0) {
+            client.write(buf, n);
+            continue;
+        }
+        if (n == 0) break;
+        if (errno == EAGAIN || errno == EWOULDBLOCK)    continue;
+        if (errno == EINTR)                             continue;
+        perror("read");
+        break;
+    }
 }
 
 int main(){
@@ -24,27 +43,15 @@ int main(){
     Socket socket = Socket();
     socket.bind(8080);
     socket.listen();
+    socket.set_nonblocking();
 
-    while (!g_should_stop) {
-        auto client = socket.accept();
-        if (!client)
-            break;
+    while (!g_should_stop.load(std::memory_order_relaxed)) {
+        std::optional<Socket> client = socket.accept();
 
-        char buf[1024];
-        while (true) {
-            ssize_t n = client->read(buf, sizeof(buf));
-            if (n == 0) {
-                break;
-            }
-            if (n < 0) {
-                if (errno == EINTR)
-                    continue;
-                perror("read");
-                break;
-            }
-            if (!client->write(buf, n)) {
-                break;
-            }
+        if (client == std::nullopt) {
+            continue;
         }
+        client->set_nonblocking();
+        handle_client(*client);
     }
 }

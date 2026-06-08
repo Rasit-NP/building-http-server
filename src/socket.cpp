@@ -4,6 +4,7 @@
 # include <netinet/in.h>
 # include <sys/socket.h>
 # include <unistd.h>
+# include <fcntl.h>
 # include <cstdio>
 # include <cerrno>
 # include <stdexcept>
@@ -62,6 +63,8 @@ std::optional<Socket> Socket::accept() {
     int client_fd = ::accept(fd_, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
 
     if (client_fd < 0){
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return std::nullopt;
         if (errno == EINTR)
             return std::nullopt;
         throw std::runtime_error("accept() failed");
@@ -83,4 +86,15 @@ bool Socket::write(const char* buf, size_t len) {
         return false;
     }
     return true;
+}
+
+void Socket::set_nonblocking() {
+    int flags = ::fcntl(fd_, F_GETFL, 0);
+    if (flags < 0) {
+        perror("fcntl F_GETFL");
+        return;
+    }
+    if (::fcntl(fd_, F_SETFL, flags | O_NONBLOCK) < 0) {
+        perror("fcntl F_SETFL");
+    }
 }

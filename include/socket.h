@@ -25,6 +25,8 @@ public:
 
     int fd() const { return fd_; }
 
+    void set_nonblocking();
+
 private:
     int fd_ = -1;
 };
