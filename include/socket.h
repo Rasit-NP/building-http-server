@@ -25,7 +25,7 @@ public:
 
     int fd() const { return fd_; }
 
-    void set_nonblocking();
+    static void set_nonblocking(int fd);
 
 private:
     int fd_ = -1;

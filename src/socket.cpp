@@ -88,13 +88,13 @@ bool Socket::write(const char* buf, size_t len) {
     return true;
 }
 
-void Socket::set_nonblocking() {
-    int flags = ::fcntl(fd_, F_GETFL, 0);
+void Socket::set_nonblocking(int target_fd) {
+    int flags = ::fcntl(target_fd, F_GETFL, 0);
     if (flags < 0) {
         perror("fcntl F_GETFL");
         return;
     }
-    if (::fcntl(fd_, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if (::fcntl(target_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
         perror("fcntl F_SETFL");
     }
 }
