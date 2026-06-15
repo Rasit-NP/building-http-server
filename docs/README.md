@@ -3,6 +3,7 @@
 `building-http-server`의 일자별 작업 & 트러블슈팅 문서 목록.
 새 문서 추가 시 **최신 항목이 위로** 오도록 한 줄씩 등록한다. (규칙: [`../CLAUDE.md`](../CLAUDE.md), 양식: [`_TEMPLATE.md`](_TEMPLATE.md))
 
+- [2026-06-15] write-backpressure — non-blocking 부분 쓰기 대응으로 `flush_write()` 추출 + `on_writable()`/`EPOLLOUT` 토글(`update_interest`) 도입. 빌드 차단 2건(🔴: write 관심 등록에 `EPOLLOUT` 대신 `EPOLLET` 사용, 등록된 fd에 `EPOLL_CTL_ADD` 재호출→`EEXIST`) 수정. 빌드 성공(🟡 `-Wextra` enum/int 경고 1건)·런타임 echo(small/4MB/동시 5연결) 검증 통과. half-close 시 미전송 데이터 유실은 향후 과제 ([문서](2026-06-15-write-backpressure.md))
 - [2026-06-14] eventloop-connection-refactor — 인라인 epoll 루프를 `EventLoop` 클래스로, client 상태를 `Connection`(+`unique_ptr` 소유)으로 분리. 빌드 차단 3건(🔴: move-only `Socket`을 값 매개변수에 lvalue로 전달→복사 삭제, `std::move` 후 `socket.fd()`로 epoll 등록→`EBADF`, `event_loop.h` `::close`에 `<unistd.h>` 누락) 수정. 빌드·`ctest` 6/6·런타임 echo 검증 통과 ([문서](2026-06-14-eventloop-connection-refactor.md))
 - [2026-06-09] epoll-multiplexing — `epoll`(level-triggered) 이벤트 루프로 다중 연결 echo 전환, accept한 client `Socket`을 `std::unordered_map<int, Socket>`로 소유. 빌드 차단 3건(🔴: `MAX_EVENTS` 미선언, accept `Socket` 즉시 소멸→연결 끊김, `clients` 맵을 `for` 루프 안 선언→`at()` throw/`std::terminate`) 수정. 빌드·`ctest` 6/6·런타임 echo 검증 통과 ([문서](2026-06-09-epoll-multiplexing.md))
 - [2026-06-08] nonblocking-io — listening/client socket을 `O_NONBLOCK`으로 전환, `handle_client()` 분리, 종료 플래그를 `std::atomic<bool>`(lock-free)로 교체. 빌드 차단(🔴: `accept()` optional 반환값 폐기 + `Socket`/`nullopt` 비교) 수정 ([문서](2026-06-08-nonblocking-io.md))
