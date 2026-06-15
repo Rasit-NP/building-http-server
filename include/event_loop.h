@@ -22,6 +22,8 @@ public:
         : listen_socket(std::move(listen_socket)), epoll_fd(epoll_fd) {}
     ~EventLoop(){ if (epoll_fd >= 0) ::close(epoll_fd); }
 
-    void run(std::atomic<bool>& stop);
+    void run(const std::atomic<bool>& stop);
+
+    void update_interest(Connection* connection) const;
 };
 #endif //HTTP_SERVER_EVENT_LOOP_H

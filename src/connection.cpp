@@ -21,12 +21,27 @@ bool Connection::on_readable() {
         }
         return false;
     }
+    return flush_write();
+}
 
-    if (!write_buf.empty()) {
-        ssize_t w = ::write(socket.fd(), write_buf.c_str(), write_buf.size());
+bool Connection::flush_write() {
+    while (!write_buf.empty()) {
+        ssize_t w = ::write(socket.fd(), write_buf.data(), write_buf.size());
         if (w > 0) {
             write_buf.erase(0, static_cast<size_t>(w));
+            continue;
         }
+        if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            break;
+        }
+        if (w < 0 && errno == EINTR) {
+            continue;
+        }
+        return false;
     }
     return true;
+}
+
+bool Connection::on_writable() {
+    return flush_write();
 }

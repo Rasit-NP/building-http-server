@@ -30,7 +30,7 @@ void EventLoop::close_conn(int fd) {
     connections.erase(fd);
 }
 
-void EventLoop::run(std::atomic<bool>& stop) {
+void EventLoop::run(const std::atomic<bool>& stop) {
     constexpr int MAX_EVENTS = 64;
     epoll_event events[MAX_EVENTS];
 
@@ -46,10 +46,33 @@ void EventLoop::run(std::atomic<bool>& stop) {
                 accept_new();
                 continue;
             }
-            auto* conn = static_cast<Connection*>(events[i].data.ptr);
-            if (!conn->on_readable()) {
-                close_conn(conn->fd());
+            auto* connection = static_cast<Connection*>(events[i].data.ptr);
+
+            bool alive = true;
+            if (events[i].events & EPOLLIN)
+                alive = connection->on_readable();
+            if (alive && (events[i].events & EPOLLOUT))
+                alive = connection->on_writable();
+
+            if (!alive) {
+                close_conn(connection->fd());
+                continue;
             }
+            update_interest(connection);
         }
     }
+}
+
+void EventLoop::update_interest(Connection* connection) const {
+    bool want = connection->want_write();
+    bool now = connection->is_writing();
+    if (want == now) {
+        return;
+    }
+
+    epoll_event ev{};
+    ev.events = EPOLLIN | (want ? EPOLLOUT : 0);
+    ev.data.ptr = connection;
+    ::epoll_ctl(epoll_fd, EPOLL_CTL_MOD, connection->fd(), &ev);
+    connection->set_writing(want);
 }
