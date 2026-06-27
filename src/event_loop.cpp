@@ -3,6 +3,20 @@
 # include <cerrno>
 # include <sys/socket.h>
 
+namespace {
+    char g_wake_sentinel;
+}
+constexpr void* WAKE_MARKER = &g_wake_sentinel;
+
+void EventLoop::register_wake_fd(int wake_read_fd) {
+    wake_fd = wake_read_fd;
+
+    epoll_event ev{};
+    ev.events = EPOLLIN;
+    ev.data.ptr = WAKE_MARKER;
+    ::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wake_fd, &ev);
+}
+
 void EventLoop::accept_new() {
     while (true) {
         int client_fd = ::accept(listen_socket.fd(), nullptr, nullptr);
@@ -42,8 +56,14 @@ void EventLoop::run(const std::atomic<bool>& stop) {
         }
 
         for (int i=0; i<n; ++i) {
-            if (events[i].data.ptr == nullptr) {
+            void* tag = events[i].data.ptr;
+
+            if (tag == nullptr) {
                 accept_new();
+                continue;
+            }
+            if (tag == WAKE_MARKER) {
+                drain_wake_fd();
                 continue;
             }
             auto* connection = static_cast<Connection*>(events[i].data.ptr);
@@ -60,6 +80,26 @@ void EventLoop::run(const std::atomic<bool>& stop) {
             }
             update_interest(connection);
         }
+    }
+}
+
+void EventLoop::drain_wake_fd() {
+    char buf[64];
+    while (true) {
+        ssize_t n = ::read(wake_fd, buf, sizeof(buf));
+        if (n > 0) {
+            continue;
+        }
+        if (n == 0) {
+            break;
+        }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            break;
+        }
+        if (errno == EINTR) {
+            continue;
+        }
+        break;
     }
 }
 
