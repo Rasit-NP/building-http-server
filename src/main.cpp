@@ -39,7 +39,12 @@ void handle_signal(int) {
     errno = saved_errno;
 }
 
-int main(){
+int main(int argc, char** argv){
+
+    uint16_t port = 8080;
+    if (argc > 1) {
+        port = static_cast<uint16_t>(std::stoul(argv[1]));
+    }
 
     setup_self_pipe();
     struct sigaction sa{};
@@ -50,8 +55,10 @@ int main(){
     sigaction(SIGTERM, &sa, nullptr);
 
     Socket socket = Socket();
-    socket.bind(8080);
+    socket.bind(port);
     socket.listen();
+    std::printf("PORT %u\n", socket.local_port());
+    std::fflush(stdout);
     Socket::set_nonblocking(socket.fd());
 
     int epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);

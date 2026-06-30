@@ -17,6 +17,7 @@ public:
     Socket(Socket&& other) noexcept;
     Socket& operator=(Socket&& other) noexcept;
 
+    uint16_t local_port() const;
     void bind(uint16_t port);
     void listen(int backlog = 10);
     std::optional<Socket> accept();

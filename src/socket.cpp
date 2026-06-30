@@ -57,6 +57,14 @@ void Socket::listen(int backlog) {
         throw std::runtime_error("listen() failed");
 }
 
+uint16_t Socket::local_port() const {
+    sockaddr_in addr{};
+    socklen_t len = sizeof(addr);
+    if (::getsockname(fd_, reinterpret_cast<sockaddr*>(&addr), &len) < 0)
+        throw std::runtime_error("getsockname() failed");
+    return ntohs(addr.sin_port);
+}
+
 std::optional<Socket> Socket::accept() {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
