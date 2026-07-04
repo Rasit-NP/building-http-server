@@ -1,11 +1,27 @@
 # include "http/HttpRequestParser.h"
+# include "http/HttpUtil.h"
 # include <string>
+
+constexpr size_t kNpos = static_cast<size_t>(-1);
+size_t find_crlf(const char* data, size_t size, size_t begin) {
+    for (size_t i = begin; i + 1 < size; ++i) {
+        if (data[i] == '\r' && data[i+1] == '\n') {
+            return i;
+        }
+    }
+    return kNpos;
+}
 
 HttpRequestParser::Result
 HttpRequestParser::parse(const char* data, size_t len) {
+    size_t offset = 0;
     switch (state_) {
     case State::RequestLine:
-        return parseRequestLine(data, len);
+        return parseRequestLine(data, len, offset);
+    case State::Headers:
+        return parseHeaders(data, len, offset);
+    case State::Done:
+        return Result::Ok;
     default:
         state_ = State::Error;
         return Result::Error;
@@ -13,7 +29,7 @@ HttpRequestParser::parse(const char* data, size_t len) {
 }
 
 HttpRequestParser::Result
-HttpRequestParser::parseRequestLine(const char* data, size_t len) {
+HttpRequestParser::parseRequestLine(const char* data, size_t len, size_t& offset) {
     std::string line(data, len);
 
     size_t crlf = line.find("\r\n");
@@ -50,6 +66,34 @@ HttpRequestParser::parseRequestLine(const char* data, size_t len) {
         return Result::Error;
     }
 
-    state_ = State::Done;
-    return Result::Ok;
+    offset = crlf + 2;
+    state_ = State::Headers;
+    return parseHeaders(data, len, offset);
+}
+HttpRequestParser::Result
+HttpRequestParser::parseHeaders(const char* data, size_t len, size_t& offset) {
+    while (offset < len) {
+        size_t line_end = find_crlf(data, len, offset);
+        if (line_end == std::string::npos) return Result::Incomplete;
+
+        std::string line(data + offset, line_end - offset);
+        offset = line_end + 2;
+
+        if (line.empty()) {
+            state_ = State::Done;
+            return Result::Ok;
+        }
+
+        size_t colon = line.find(':');
+        if (colon == std::string::npos) {
+            continue;
+        }
+
+        std::string name  = line.substr(0, colon);
+        std::string value = line.substr(colon + 1);
+
+        request_.headers[http::to_lower(name)] = http::trim_ows(value);
+    }
+
+    return Result::Incomplete;
 }

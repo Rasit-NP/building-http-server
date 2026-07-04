@@ -24,7 +24,8 @@ private:
         Error
     };
 
-    Result parseRequestLine(const char* data, size_t len);
+    Result parseRequestLine(const char* data, size_t len, size_t& offset);
+    Result parseHeaders(const char* data, size_t len, size_t& offset);
 
     State state_ = State::RequestLine;
     HttpRequest request_;
