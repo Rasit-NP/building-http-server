@@ -43,3 +43,31 @@ TEST(HttpRequestParserTest, extract) {
     EXPECT_TRUE(req.headers.at("host")       == "localhost:8080");
     EXPECT_TRUE(req.headers.at("user-agent") == "curl/8.0");
 }
+
+TEST(HttpRequestParserTest, incremental) {
+    const char* raw1 = "GET /path H";
+    const char* raw2 = "TTP/1.1\r\n";
+    const char* raw3 = "Host: localhost:8080";
+    const char* raw4 =
+        "\r\n"
+        "User-Agent: curl/8.0\r";
+    const char* raw5 =
+        "\n"
+        "\r\n";
+
+    HttpRequestParser parser;
+    parser.parse(raw1, strlen(raw1));
+    parser.parse(raw2, strlen(raw2));
+    parser.parse(raw3, strlen(raw3));
+    parser.parse(raw4, strlen(raw4));
+    HttpRequestParser::Result r = parser.parse(raw5, strlen(raw5));
+
+    HttpRequest req = parser.request();
+
+    EXPECT_TRUE(r == HttpRequestParser::Result::Ok);
+    EXPECT_TRUE(req.method == "GET");
+    EXPECT_TRUE(req.path == "/path");
+    EXPECT_TRUE(req.version == "HTTP/1.1");
+    EXPECT_TRUE(req.headers.at("host")       == "localhost:8080");
+    EXPECT_TRUE(req.headers.at("user-agent") == "curl/8.0");
+}
