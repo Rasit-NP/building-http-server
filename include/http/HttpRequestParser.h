@@ -2,6 +2,7 @@
 #define HTTP_SERVER_HTTPREQUESTPARSER_H
 
 # include <cstddef>
+# include <string>
 # include "HttpRequest.h"
 
 class HttpRequestParser {
@@ -24,9 +25,11 @@ private:
         Error
     };
 
-    Result parseRequestLine(const char* data, size_t len, size_t& offset);
-    Result parseHeaders(const char* data, size_t len, size_t& offset);
+    Result parseRequestLine();
+    Result parseHeaders();
 
+    std::string buffer_;
+    size_t offset_ = 0;
     State state_ = State::RequestLine;
     HttpRequest request_;
 };
