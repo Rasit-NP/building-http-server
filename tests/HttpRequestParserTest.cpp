@@ -71,3 +71,31 @@ TEST(HttpRequestParserTest, incremental) {
     EXPECT_TRUE(req.headers.at("host")       == "localhost:8080");
     EXPECT_TRUE(req.headers.at("user-agent") == "curl/8.0");
 }
+
+TEST(HttpRequestParserTest, RequestLine1) {
+    HttpRequestParser parser;
+    const char* raw = "GET / FOO\r\n\r\n";
+    EXPECT_TRUE(parser.parse(raw, std::strlen(raw)) == HttpRequestParser::Result::Error);
+}
+
+TEST(HttpRequestParserTest, RequestLine2) {
+    HttpRequestParser parser;
+    const char* raw = "GET / HTTP/1.1\r\nHost localhost\r\n\r\n";
+    EXPECT_TRUE(parser.parse(raw, std::strlen(raw)) == HttpRequestParser::Result::Error);
+}
+
+TEST(HttpRequestParserTest, RequestLine3) {
+    HttpRequestParser parser;
+    const char* raw = "GET / HTTP/1.1\n";
+    EXPECT_TRUE(parser.parse(raw, std::strlen(raw)) == HttpRequestParser::Result::Error);
+}
+
+TEST(HttpRequestParserTest, ErrorLatch) {
+    HttpRequestParser parser;
+
+    const char* bad = "GET / HTTP/1.1\n";
+    EXPECT_TRUE(parser.parse(bad, std::strlen(bad)) == HttpRequestParser::Result::Error);
+
+    const char* good = "GET / HTTP/1.1\r\n\r\n";
+    EXPECT_TRUE(parser.parse(good, std::strlen(good)) == HttpRequestParser::Result::Error);
+}
