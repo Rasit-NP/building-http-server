@@ -1,4 +1,7 @@
-add_executable(http_server main.cpp socket.cpp connection.cpp event_loop.cpp http/HttpRequestParser.cpp)
+add_executable(http_server
+        main.cpp socket.cpp connection.cpp event_loop.cpp
+        http/HttpRequestParser.cpp
+)
 
 target_include_directories(http_server
     PRIVATE ${CMAKE_SOURCE_DIR}/include
