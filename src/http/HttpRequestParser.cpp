@@ -27,6 +27,10 @@ HttpRequestParser::parse(const char* data, size_t len) {
         return Result::Error;
     }
 
+    if (state_ == State::Error) {
+        return Result::Error;
+    }
+
     while (true) {
         switch (state_) {
         case State::RequestLine: {
@@ -53,6 +57,14 @@ HttpRequestParser::parseRequestLine() {
 
     size_t crlf = find_crlf(buffer_, offset_);
     if (crlf == std::string::npos) {
+        for (size_t i=offset_; i<buffer_.size(); ++i) {
+            if (buffer_[i] == '\n') {
+                if (i == offset_ || buffer_[i-1] != '\r') {
+                    state_ = State::Error;
+                    return Result::Error;
+                }
+            }
+        }
         return Result::Incomplete;
     }
 
@@ -83,6 +95,10 @@ HttpRequestParser::parseRequestLine() {
         state_ = State::Error;
         return Result::Error;
     }
+    if (!request_.isValidVersion()) {
+        state_ = State::Error;
+        return Result::Error;
+    }
 
     offset_ = crlf + 2;
     state_ = State::Headers;
@@ -104,7 +120,8 @@ HttpRequestParser::parseHeaders() {
 
         size_t colon = line.find(':');
         if (colon == std::string::npos) {
-            continue;
+            state_ = State::Error;
+            return Result::Error;
         }
 
         std::string name  = line.substr(0, colon);
