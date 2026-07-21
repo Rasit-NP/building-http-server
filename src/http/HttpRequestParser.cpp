@@ -44,6 +44,18 @@ HttpRequestParser::parse(const char* data, size_t len) {
             break;
         }
         case State::Done:
+            request_.method = std::string_view(buffer_.data() + method_off_, method_len_);
+            request_.path = std::string_view(buffer_.data() + path_off_, path_len_);
+            request_.version = std::string_view(buffer_.data() + version_off_, version_len_);
+
+            if (!request_.isValid()) {
+                state_ = State::Error;
+                return Result::Error;
+            }
+            if (!request_.isValidVersion()) {
+                state_ = State::Error;
+                return Result::Error;
+            }
             return Result::Ok;
 
         case State::Error:
@@ -68,34 +80,32 @@ HttpRequestParser::parseRequestLine() {
         return Result::Incomplete;
     }
 
-    std::string request_line = buffer_.substr(0, crlf);
-
-    size_t sp1 = request_line.find(' ');
-    if (sp1 == std::string::npos) {
+    size_t sp1 = buffer_.find(' ', offset_);
+    if (sp1 == std::string::npos || sp1 >= crlf) {
         state_ = State::Error;
         return Result::Error;
     }
 
-    size_t sp2 = request_line.find(' ', sp1 + 1);
-    if (sp2 == std::string::npos) {
+    size_t sp2 = buffer_.find(' ', sp1 + 1);
+    if (sp2 == std::string::npos || sp2 >= crlf) {
         state_ = State::Error;
         return Result::Error;
     }
 
-    if (request_line.find(' ', sp2+1) != std::string::npos) {
+    size_t sp3 = buffer_.find(' ', sp2 + 1);
+    if (sp3 != std::string::npos && sp3 < crlf) {
         state_ = State::Error;
         return Result::Error;
     }
 
-    request_.method  = request_line.substr(0, sp1);
-    request_.path    = request_line.substr(sp1+1, sp2-sp1-1);
-    request_.version = request_line.substr(sp2+1);
+    method_off_ = offset_;
+    method_len_ = sp1 - method_off_;
+    path_off_ = offset_ + sp1 + 1;
+    path_len_ = sp2 - path_off_;
+    version_off_ = offset_ + sp2 + 1;
+    version_len_ = crlf - version_off_;
 
-    if (!request_.isValid()) {
-        state_ = State::Error;
-        return Result::Error;
-    }
-    if (!request_.isValidVersion()) {
+    if (!method_len_ || !path_len_ || !version_len_) {
         state_ = State::Error;
         return Result::Error;
     }

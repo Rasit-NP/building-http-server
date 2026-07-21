@@ -6,9 +6,9 @@
 using namespace std;
 
 struct HttpRequest {
-    string method;
-    string path;
-    string version;
+    string_view method;
+    string_view path;
+    string_view version;
 
     unordered_map<string, string> headers;
 

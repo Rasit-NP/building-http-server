@@ -30,6 +30,9 @@ private:
 
     std::string buffer_;
     size_t offset_ = 0;
+    size_t method_off_, method_len_;
+    size_t path_off_, path_len_;
+    size_t version_off_, version_len_;
     State state_ = State::RequestLine;
     HttpRequest request_;
 };
