@@ -44,9 +44,9 @@ HttpRequestParser::parse(const char* data, size_t len) {
             break;
         }
         case State::Done:
-            request_.method = std::string_view(buffer_.data() + method_off_, method_len_);
-            request_.path = std::string_view(buffer_.data() + path_off_, path_len_);
-            request_.version = std::string_view(buffer_.data() + version_off_, version_len_);
+            request_.method = std::string_view(buffer_.data() + request_.method_off, request_.method_len);
+            request_.path = std::string_view(buffer_.data() + request_.path_off, request_.path_len);
+            request_.version = std::string_view(buffer_.data() + request_.version_off, request_.version_len);
 
             if (!request_.isValid()) {
                 state_ = State::Error;
@@ -98,14 +98,14 @@ HttpRequestParser::parseRequestLine() {
         return Result::Error;
     }
 
-    method_off_ = offset_;
-    method_len_ = sp1 - method_off_;
-    path_off_ = offset_ + sp1 + 1;
-    path_len_ = sp2 - path_off_;
-    version_off_ = offset_ + sp2 + 1;
-    version_len_ = crlf - version_off_;
+    request_.method_off = offset_;
+    request_.method_len = sp1 - request_.method_off;
+    request_.path_off = offset_ + sp1 + 1;
+    request_.path_len = sp2 - request_.path_off;
+    request_.version_off = offset_ + sp2 + 1;
+    request_.version_len = crlf - request_.version_off;
 
-    if (!method_len_ || !path_len_ || !version_len_) {
+    if (!request_.isSuccessfullyParsed()) {
         state_ = State::Error;
         return Result::Error;
     }
@@ -141,4 +141,11 @@ HttpRequestParser::parseHeaders() {
     }
 
     return Result::Incomplete;
+}
+
+void HttpRequestParser::reset() {
+    state_ = State::RequestLine;
+    buffer_.clear();
+    offset_ = 0;
+    request_ = HttpRequest{};
 }

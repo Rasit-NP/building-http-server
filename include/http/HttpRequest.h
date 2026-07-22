@@ -10,7 +10,15 @@ struct HttpRequest {
     string_view path;
     string_view version;
 
+    size_t method_off = 0, method_len = 0;
+    size_t path_off = 0, path_len = 0;
+    size_t version_off = 0, version_len = 0;
+
     unordered_map<string, string> headers;
+
+    bool isSuccessfullyParsed() const {
+        return method_len && path_len && version_len;
+    }
 
     bool isValid() const {
         return !method.empty() && !path.empty() && !version.empty();
