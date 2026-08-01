@@ -1,20 +1,9 @@
 # include "connection.h"
+# include "http/HttpResponse.h"
 # include <unistd.h>
 # include <cerrno>
 # include <cstdio>
 
-namespace {
-    std::string build_response(const char* status_line, const std::string& body) {
-        std::string res;
-        res += "HTTP/1.1 ";
-        res += status_line;
-        res += "\r\nContent-Length: ";
-        res += std::to_string(body.size());
-        res += "\r\nConnection: close\r\n\r\n";
-        res += body;
-        return res;
-    }
-}
 
 bool Connection::on_readable() {
     char buf[4096];
@@ -30,13 +19,21 @@ bool Connection::on_readable() {
                             static_cast<int>(req.method.size()), req.method.data(),
                             static_cast<int>(req.path.size()), req.path.data(),
                             static_cast<int>(req.version.size()), req.version.data());
-                write_buf.append(build_response("200 OK", "Success"));
+                HttpResponse res;
+                res.status_code = 200;
+                res.body = "Success";
+                res.headers.emplace_back("Connection", "close");
+                write_buf.append(res.serialize());
                 close_after_write = true;
                 break;
             }
             else if (r == HttpRequestParser::Result::Error) {
                 std::fprintf(stderr, "parse error on fd=%d\n", fd());
-                write_buf.append(build_response("400 Bad Request", "Bad Request"));
+                HttpResponse res;
+                res.status_code = 400;
+                res.body = "Bad Request";
+                res.headers.emplace_back("Connection", "close");
+                write_buf.append(res.serialize());
                 close_after_write = true;
                 break;
             }

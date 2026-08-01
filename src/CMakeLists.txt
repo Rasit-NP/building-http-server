@@ -1,6 +1,6 @@
 add_executable(http_server
         main.cpp socket.cpp connection.cpp event_loop.cpp
-        http/HttpRequestParser.cpp
+        http/HttpRequestParser.cpp http/HttpResponse.cpp
 )
 
 target_include_directories(http_server
