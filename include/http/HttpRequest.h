@@ -16,6 +16,8 @@ struct HttpRequest {
 
     unordered_map<string, string> headers;
 
+    string body;
+
     bool isSuccessfullyParsed() const {
         return method_len && path_len && version_len;
     }

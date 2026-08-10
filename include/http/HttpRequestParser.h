@@ -22,15 +22,18 @@ private:
     enum class State {
         RequestLine,
         Headers,
+        Body,
         Done,
         Error
     };
 
     Result parseRequestLine();
     Result parseHeaders();
+    Result parseBody();
 
     std::string buffer_;
     size_t offset_ = 0;
+    size_t body_remaining_ = 0;
     State state_ = State::RequestLine;
     HttpRequest request_;
 };

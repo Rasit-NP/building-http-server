@@ -1,6 +1,7 @@
 # include "http/HttpRequestParser.h"
 # include "http/HttpUtil.h"
 # include <string>
+# include <charconv>
 
 static constexpr size_t kMaxBufferBytes = 8 * 1024;
 
@@ -16,6 +17,27 @@ size_t find_crlf(const std::string& buf, size_t start) {
         }
     }
     return std::string::npos;
+}
+
+bool parse_content_length(const std::string& s, size_t& out) {
+    if (s.empty())
+        return false;
+    if (s.front() == '-' || s.front() == '+')
+        return false;
+
+    const char* begin = s.data();
+    const char* end = s.data() + s.size();
+
+    size_t value = 0;
+    auto [ptr, ec] = std::from_chars(begin, end, value);
+
+    if (ec != std::errc())
+        return false;
+    if (ptr != end)
+        return false;
+
+    out = value;
+    return true;
 }
 
 HttpRequestParser::Result
@@ -40,6 +62,11 @@ HttpRequestParser::parse(const char* data, size_t len) {
         }
         case State::Headers: {
             Result r = parseHeaders();
+            if (r != Result::Ok) return r;
+            break;
+        }
+        case State::Body: {
+            Result r = parseBody();
             if (r != Result::Ok) return r;
             break;
         }
@@ -124,8 +151,26 @@ HttpRequestParser::parseHeaders() {
         offset_ = line_end + 2;
 
         if (line.empty()) {
-            state_ = State::Done;
-            return Result::Ok;
+            auto it = request_.headers.find("content-length");
+            if (it == request_.headers.end()) {
+                state_ = State::Done;
+                return Result::Ok;
+            }
+
+            size_t len = 0;
+            if (!parse_content_length(it->second, len)) {
+                state_ = State::Error;
+                return Result::Error;
+            }
+
+            body_remaining_ = len;
+            if (body_remaining_ == 0) {
+                state_ = State::Done;
+                return Result::Ok;
+            }
+
+            state_ = State::Body;
+            return parseBody();
         }
 
         size_t colon = line.find(':');
@@ -134,13 +179,35 @@ HttpRequestParser::parseHeaders() {
             return Result::Error;
         }
 
-        std::string name  = line.substr(0, colon);
-        std::string value = line.substr(colon + 1);
+        std::string name  = http::to_lower(line.substr(0, colon));
+        std::string value = http::trim_ows(line.substr(colon + 1));
 
-        request_.headers[http::to_lower(name)] = http::trim_ows(value);
+        if (request_.headers.find(name) == request_.headers.end()) {
+            request_.headers[name] = http::trim_ows(value);
+        }
+        else if (name == "content-length" && value != request_.headers[name]) {
+            state_ = State::Error;
+            return Result::Error;
+        }
     }
 
     return Result::Incomplete;
+}
+
+HttpRequestParser::Result HttpRequestParser::parseBody() {
+    size_t available = buffer_.size() - offset_;
+    size_t take = std::min(available, body_remaining_);
+
+    request_.body.append(buffer_, offset_, take);
+    offset_ += take;
+    body_remaining_ -= take;
+
+    if (body_remaining_ > 0) {
+        return Result::Incomplete;
+    }
+
+    state_ = State::Done;
+    return Result::Ok;
 }
 
 void HttpRequestParser::reset() {
@@ -148,4 +215,5 @@ void HttpRequestParser::reset() {
     buffer_.clear();
     offset_ = 0;
     request_ = HttpRequest{};
+    body_remaining_ = 0;
 }
