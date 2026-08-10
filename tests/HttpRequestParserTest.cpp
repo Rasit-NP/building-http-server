@@ -15,6 +15,12 @@ struct ErrorCase {
     std::string error_name;
 };
 
+struct BodyCase {
+    std::string input;
+    std::string expected_body;
+    HttpRequestParser::Result expected_result;
+};
+
 class ParserTest : public testing::TestWithParam<HeaderCase> {
 protected:
     HttpRequestParser parser;
@@ -26,6 +32,11 @@ protected:
 };
 
 class ErrorTest : public testing::TestWithParam<ErrorCase> {
+protected:
+    HttpRequestParser parser;
+};
+
+class BodyTest : public testing::TestWithParam<BodyCase> {
 protected:
     HttpRequestParser parser;
 };
@@ -48,6 +59,13 @@ struct ErrorNameGenerator {
     std::string operator()(
         const testing::TestParamInfo<ErrorCase>& info) const {
         return "ErrorTest_" + info.param.error_name;
+    }
+};
+
+struct BodyNameGenerator {
+    std::string operator()(
+        const testing::TestParamInfo<BodyCase>& info) const {
+        return "BodyTest_" + std::to_string(info.index);
     }
 };
 
@@ -141,3 +159,35 @@ TEST(HttpRequestParserTest, ErrorLatch) {
     const char* good = "GET / HTTP/1.1\r\n\r\n";
     EXPECT_TRUE(parser.parse(good, std::strlen(good)) == HttpRequestParser::Result::Error);
 }
+
+std::vector<BodyCase> body_cases = {
+    {"GET / HTTP/1.1\r\ncontent-Length: 10\r\n\r\n1234567890", "1234567890", HttpRequestParser::Result::Ok},
+    {"POST /index HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "", HttpRequestParser::Result::Ok},
+    {"GET /path HTTP/1.1\r\n\r\n", "", HttpRequestParser::Result::Ok},
+    {"POST /path/1 HTTP/1.1\r\nContent-length: abc\r\n\r\n", "", HttpRequestParser::Result::Error},
+    {"GET /index/1 HTTP/1.1\r\nContent-Length: 20\r\n\r\nabc", "abc", HttpRequestParser::Result::Incomplete},
+    {"POST /over HTTP/1.1\r\ncontent-length: 5\r\n\r\nhelloEXTRA", "hello", HttpRequestParser::Result::Ok},
+    {"GET /dupCL1 HTTP/1.1\r\nContent-Length: 1\r\ncontent-length: 1\r\n\r\na", "a", HttpRequestParser::Result::Ok},
+    {"POST /dupCL2 HTTP/1.1\r\nContent-Length: 1\r\ncontent-length: 2\r\n\r\nab", "", HttpRequestParser::Result::Error},
+    {"POST /dupCL3 HTTP/1.1\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\nab", "", HttpRequestParser::Result::Error},
+    {"GET /dupCookie HTTP/1.1\r\nCookie: a=1\r\nCookie: b=2\r\n\r\n", "", HttpRequestParser::Result::Ok}
+};
+
+TEST_P(BodyTest, BodyTest) {
+    const auto& c = GetParam();
+    HttpRequestParser parser;
+
+    HttpRequestParser::Result r = parser.parse(c.input.data(), c.input.size());
+
+    EXPECT_EQ(parser.request().body, c.expected_body);
+    EXPECT_EQ(r, c.expected_result);
+    parser.reset();
+
+    r = feedInChunks(parser, c.input, 1);
+
+    EXPECT_EQ(parser.request().body, c.expected_body);
+    EXPECT_EQ(r, c.expected_result);
+    parser.reset();
+}
+
+INSTANTIATE_TEST_SUITE_P(Body, BodyTest, testing::ValuesIn(body_cases), BodyNameGenerator());
