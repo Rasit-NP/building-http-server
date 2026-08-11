@@ -18,6 +18,7 @@ private:
     int     epoll_fd;
     int     wake_fd = -1;
     std::unordered_map<int, std::unique_ptr<Connection>> connections;
+    StaticFileHandler handler_ = StaticFileHandler("public");
 public:
     EventLoop(Socket listen_socket, int epoll_fd)
         : listen_socket(std::move(listen_socket)), epoll_fd(epoll_fd) {}

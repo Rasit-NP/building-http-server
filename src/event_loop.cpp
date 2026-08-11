@@ -27,8 +27,7 @@ void EventLoop::accept_new() {
         }
 
         Socket::set_nonblocking(client_fd);
-        auto connection = std::make_unique<Connection>(Socket{client_fd});
-
+        auto connection = std::make_unique<Connection>(Socket{client_fd}, handler_);
 
         epoll_event ev{};
         ev.events = EPOLLIN;

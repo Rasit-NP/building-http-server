@@ -4,6 +4,7 @@
 # include <string>
 # include "socket.h"
 # include "http/HttpRequestParser.h"
+# include "http/StaticFileHandler.h"
 
 class Connection {
 private:
@@ -13,12 +14,14 @@ private:
     bool              close_after_write = false;
     std::string       write_buf;
 
+    const StaticFileHandler& handler_;
+
 public:
-    explicit Connection(Socket sock) : socket(std::move(sock)) {}
+    explicit Connection(Socket sock, const StaticFileHandler& handler) : socket(std::move(sock)),  handler_(handler) {}
     Connection(const Connection&)             = delete;
     Connection& operator=(const Connection&)  = delete;
     Connection(Connection&&)                  = default;
-    Connection& operator=(Connection&&)       = default;
+    Connection& operator=(Connection&&)       = delete;
 
     int fd() const noexcept {
         return socket.fd();

@@ -14,16 +14,9 @@ bool Connection::on_readable() {
 
             if (r == HttpRequestParser::Result::Ok) {
                 const HttpRequest& req = parser_.request();
+                std::string out = handler_.handle(req).serialize();
+                write_buf.append(out);
 
-                std::printf("method=%.*s path=%.*s version=%.*s\n",
-                            static_cast<int>(req.method.size()), req.method.data(),
-                            static_cast<int>(req.path.size()), req.path.data(),
-                            static_cast<int>(req.version.size()), req.version.data());
-                HttpResponse res;
-                res.status_code = 200;
-                res.body = "Success";
-                res.headers.emplace_back("Connection", "close");
-                write_buf.append(res.serialize());
                 close_after_write = true;
                 break;
             }

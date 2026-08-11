@@ -32,5 +32,6 @@ RUN rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /src/build/src/http_server ./
+COPY public/ ./public/
 
 CMD ["./http_server"]
