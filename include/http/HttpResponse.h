@@ -4,6 +4,7 @@
 # include <utility>
 # include <vector>
 # include <string>
+# include <ctime>
 
 class HttpResponse {
 public:
@@ -12,5 +13,6 @@ public:
     std::string body;
 
     std::string serialize() const;
+    std::string serialize(std::time_t now) const;
 };
 #endif //HTTP_SERVER_HTTPRESPONSE_H

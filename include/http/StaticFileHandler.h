@@ -7,7 +7,7 @@
 
 class StaticFileHandler {
 public:
-    explicit StaticFileHandler(std::string root): root_(root){}
+    explicit StaticFileHandler(const std::string root): root_(root){}
     HttpResponse handle(const HttpRequest& request) const;
 
 private:
