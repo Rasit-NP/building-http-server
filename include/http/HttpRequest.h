@@ -8,11 +8,13 @@ using namespace std;
 struct HttpRequest {
     string_view method;
     string_view path;
+    string_view query;
     string_view version;
 
     size_t method_off = 0, method_len = 0;
     size_t path_off = 0, path_len = 0;
     size_t version_off = 0, version_len = 0;
+    size_t query_off = 0, query_len = 0;
 
     unordered_map<string, string> headers;
 

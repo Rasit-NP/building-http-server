@@ -1,5 +1,6 @@
 # include "connection.h"
 # include "http/HttpResponse.h"
+# include "http/route.h"
 # include <unistd.h>
 # include <cerrno>
 # include <cstdio>
@@ -14,7 +15,7 @@ bool Connection::on_readable() {
 
             if (r == HttpRequestParser::Result::Ok) {
                 const HttpRequest& req = parser_.request();
-                std::string out = handler_.handle(req).serialize();
+                std::string out = route(req, handler_).serialize();
                 write_buf.append(out);
 
                 close_after_write = true;

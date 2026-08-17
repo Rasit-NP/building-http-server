@@ -73,6 +73,7 @@ HttpRequestParser::parse(const char* data, size_t len) {
         case State::Done:
             request_.method = std::string_view(buffer_.data() + request_.method_off, request_.method_len);
             request_.path = std::string_view(buffer_.data() + request_.path_off, request_.path_len);
+            request_.query = std::string_view(buffer_.data() + request_.query_off, request_.query_len);
             request_.version = std::string_view(buffer_.data() + request_.version_off, request_.version_len);
 
             if (!request_.isValid()) {
@@ -127,9 +128,21 @@ HttpRequestParser::parseRequestLine() {
 
     request_.method_off = offset_;
     request_.method_len = sp1 - request_.method_off;
-    request_.path_off = offset_ + sp1 + 1;
-    request_.path_len = sp2 - request_.path_off;
-    request_.version_off = offset_ + sp2 + 1;
+
+    size_t q = buffer_.find('?', sp1 + 1);
+    if (q == std::string::npos || q >= sp2) {
+        request_.path_off = sp1 + 1;
+        request_.path_len = sp2 - request_.path_off;
+        request_.query_off = request_.path_off;
+        request_.query_len = 0;
+    }
+    else {
+        request_.path_off = sp1 + 1;
+        request_.path_len = q - request_.path_off;
+        request_.query_off = q + 1;
+        request_.query_len = sp2 - request_.query_off;
+    }
+    request_.version_off = sp2 + 1;
     request_.version_len = crlf - request_.version_off;
 
     if (!request_.isSuccessfullyParsed()) {
