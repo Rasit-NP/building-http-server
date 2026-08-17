@@ -2,23 +2,32 @@
 # include <gtest/gtest.h>
 # include "http/HttpRequestParser.h"
 
-struct HeaderCase {
+struct BaseCase {
     std::string input;
+};
+
+struct HeaderCase: BaseCase {
     std::string expected_method;
     std::string expected_path;
     std::string expected_version;
     std::vector<std::pair<std::string, std::string>> expected_headers;
 };
 
-struct ErrorCase {
-    std::string input;
+struct ErrorCase: BaseCase {
     std::string error_name;
 };
 
-struct BodyCase {
-    std::string input;
+struct BodyCase: BaseCase {
     std::string expected_body;
     HttpRequestParser::Result expected_result;
+};
+
+struct QueryCase: BaseCase {
+    std::string expected_path;
+    std::string expected_query;
+};
+
+struct EchoCase: BaseCase {
 };
 
 class ParserTest : public testing::TestWithParam<HeaderCase> {
@@ -37,6 +46,11 @@ protected:
 };
 
 class BodyTest : public testing::TestWithParam<BodyCase> {
+protected:
+    HttpRequestParser parser;
+};
+
+class QueryTest : public testing::TestWithParam<QueryCase> {
 protected:
     HttpRequestParser parser;
 };
@@ -66,6 +80,13 @@ struct BodyNameGenerator {
     std::string operator()(
         const testing::TestParamInfo<BodyCase>& info) const {
         return "BodyTest_" + std::to_string(info.index);
+    }
+};
+
+struct QueryNameGenerator {
+    std::string operator()(
+        const testing::TestParamInfo<QueryCase>& info) const {
+        return "QueryTest_" + std::to_string(info.index);
     }
 };
 
@@ -191,3 +212,27 @@ TEST_P(BodyTest, BodyTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Body, BodyTest, testing::ValuesIn(body_cases), BodyNameGenerator());
+
+std::vector<QueryCase> query_cases = {
+    {"GET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "/", ""},
+    {"GET /index.html?v=1 HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "/index.html", "v=1"},
+    {"GET /path?query=1 HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "/path", "query=1"}
+};
+
+TEST_P(QueryTest, QueryTest) {
+    const auto& c = GetParam();
+    HttpRequestParser parser;
+
+    HttpRequestParser::Result r = parser.parse(c.input.data(), c.input.size());
+
+    EXPECT_EQ(parser.request().path, c.expected_path);
+    EXPECT_EQ(parser.request().query, c.expected_query);
+    parser.reset();
+
+    r = feedInChunks(parser, c.input, 1);
+
+    EXPECT_EQ(parser.request().path, c.expected_path);
+    EXPECT_EQ(parser.request().query, c.expected_query);
+}
+
+INSTANTIATE_TEST_SUITE_P(Query, QueryTest, testing::ValuesIn(query_cases), QueryNameGenerator());
